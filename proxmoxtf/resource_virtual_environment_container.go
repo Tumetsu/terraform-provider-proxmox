@@ -38,6 +38,7 @@ const (
 	dvResourceVirtualEnvironmentContainerDescription                       = ""
 	dvResourceVirtualEnvironmentContainerDiskDatastoreID                   = "local"
 	dvResourceVirtualEnvironmentContainerDiskSize                          = 4
+	dvResourceVirtualEnvironmentContainerFeaturesNesting                   = false
 	dvResourceVirtualEnvironmentContainerMemoryDedicated                   = 512
 	dvResourceVirtualEnvironmentContainerMemorySwap                        = 0
 	dvResourceVirtualEnvironmentContainerNetworkInterfaceBridge            = "vmbr0"
@@ -71,6 +72,8 @@ const (
 	mkResourceVirtualEnvironmentContainerDisk                              = "disk"
 	mkResourceVirtualEnvironmentContainerDiskDatastoreID                   = "datastore_id"
 	mkResourceVirtualEnvironmentContainerDiskSize                          = "size"
+	mkResourceVirtualEnvironmentContainerFeatures                          = "features"
+	mkResourceVirtualEnvironmentContainerFeaturesNesting                   = "nesting"
 	mkResourceVirtualEnvironmentContainerInitialization                    = "initialization"
 	mkResourceVirtualEnvironmentContainerInitializationDNS                 = "dns"
 	mkResourceVirtualEnvironmentContainerInitializationDNSDomain           = "domain"
@@ -266,6 +269,32 @@ func resourceVirtualEnvironmentContainer() *schema.Resource {
 							ForceNew:         true,
 							Default:          dvResourceVirtualEnvironmentContainerDiskSize,
 							ValidateDiagFunc: validation.ToDiagFunc(validation.IntAtLeast(1)),
+						},
+					},
+				},
+				MaxItems: 1,
+				MinItems: 0,
+			},
+			mkResourceVirtualEnvironmentContainerFeatures: {
+				Type:        schema.TypeList,
+				Description: "Features",
+				Optional:    true,
+				ForceNew:    true,
+				DefaultFunc: func() (interface{}, error) {
+					return []interface{}{
+						map[string]interface{}{
+							mkResourceVirtualEnvironmentContainerFeaturesNesting: dvResourceVirtualEnvironmentContainerFeaturesNesting,
+						},
+					}, nil
+				},
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						mkResourceVirtualEnvironmentContainerFeaturesNesting: {
+							Type:        schema.TypeBool,
+							Description: "Whether the container runs as nested",
+							Optional:    true,
+							ForceNew:    true,
+							Default:     dvResourceVirtualEnvironmentContainerFeaturesNesting,
 						},
 					},
 				},
@@ -1037,6 +1066,19 @@ func resourceVirtualEnvironmentContainerCreateCustom(
 		}
 	}
 
+	featuresBlock, err := getSchemaBlock(
+		resource,
+		d,
+		[]string{mkResourceVirtualEnvironmentContainerFeatures},
+		0,
+		true,
+	)
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
+	nesting := proxmox.CustomBool(featuresBlock[mkResourceVirtualEnvironmentContainerFeaturesNesting].(bool))
+
 	initialization := d.Get(mkResourceVirtualEnvironmentContainerInitialization).([]interface{})
 	initializationDNSDomain := dvResourceVirtualEnvironmentContainerInitializationDNSDomain
 	initializationDNSServer := dvResourceVirtualEnvironmentContainerInitializationDNSServer
@@ -1224,7 +1266,6 @@ func resourceVirtualEnvironmentContainerCreateCustom(
 		vmID = *vmIDNew
 	}
 
-	// Attempt to create the resource using the retrieved values.
 	createBody := proxmox.VirtualEnvironmentContainerCreateRequestBody{
 		ConsoleEnabled:       &consoleEnabled,
 		ConsoleMode:          &consoleMode,
@@ -1242,7 +1283,10 @@ func resourceVirtualEnvironmentContainerCreateCustom(
 		Template:             &template,
 		TTY:                  &consoleTTYCount,
 		Unprivileged:         &unprivileged,
-		VMID:                 &vmID,
+		Features: &(proxmox.VirtualEnvironmentContainerCustomFeatures{
+			Nesting: &nesting,
+		}),
+		VMID: &vmID,
 	}
 
 	if description != "" {

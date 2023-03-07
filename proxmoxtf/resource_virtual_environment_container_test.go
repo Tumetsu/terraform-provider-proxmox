@@ -39,6 +39,7 @@ func TestResourceVirtualEnvironmentContainerSchema(t *testing.T) {
 		mkResourceVirtualEnvironmentContainerTags,
 		mkResourceVirtualEnvironmentContainerTemplate,
 		mkResourceVirtualEnvironmentContainerUnprivileged,
+		mkResourceVirtualEnvironmentContainerFeatures,
 		mkResourceVirtualEnvironmentContainerVMID,
 	})
 
@@ -54,6 +55,7 @@ func TestResourceVirtualEnvironmentContainerSchema(t *testing.T) {
 		mkResourceVirtualEnvironmentContainerTags:            schema.TypeList,
 		mkResourceVirtualEnvironmentContainerTemplate:        schema.TypeBool,
 		mkResourceVirtualEnvironmentContainerUnprivileged:    schema.TypeBool,
+		mkResourceVirtualEnvironmentContainerFeatures:        schema.TypeList,
 		mkResourceVirtualEnvironmentContainerVMID:            schema.TypeInt,
 	})
 
